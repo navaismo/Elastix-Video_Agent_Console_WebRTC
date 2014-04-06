@@ -83,12 +83,19 @@ The WebRTC Agent Console Addon is required. You can install it from the Addon Me
 In order to test the Module you can copy the folder ClientExamplePage to your Apache's web root folder(In elastix /var/www/html).
 Then change this part of code in the vid1.htm file to match your peer settings:
         `//stack options`
+
                 `mySipStack  = new SIPml.Stack({`
+
                         `realm: 'asterisk',`
+
                         `impi: 'mypeer',`
+
                         `impu: 'sip:mypeer@myip',`
+
                         `password: 'mypwd', // optional`
+
                         `display_name: 'WEBRTC', // optional`
+
                        	`websocket_proxy_url: 'ws://myip:10060', // optional``
 
 
