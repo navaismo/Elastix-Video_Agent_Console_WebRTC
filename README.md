@@ -96,7 +96,7 @@ Then change this part of code in the vid1.htm file to match your peer settings:
 
                         `display_name: 'WEBRTC', // optional`
 
-                       	`websocket_proxy_url: 'ws://myip:10060', // optional``
+                       	`websocket_proxy_url: 'ws://myip:10060', // optional`
 
 
 ##ScreenShots##
