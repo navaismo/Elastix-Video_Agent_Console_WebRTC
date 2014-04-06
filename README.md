@@ -30,7 +30,6 @@ The WebRTC Agent Console Addon is required. You can install it from the Addon Me
 
   * Configure the SIP peers to use Video codecs, the easiest way is to set the fields *disallow* and *allow* to *all*
 
-
 3. Reconfigure the Webrtc2SIP media gateway:
 
   * Change to asterisk user running the next command:
@@ -75,15 +74,13 @@ The WebRTC Agent Console Addon is required. You can install it from the Addon Me
         `exit`
      with the last exit now you are in the root's shell. 
  
-         
-
 4. Enjoy and please report bugs and of features.
   
 
 ##ScreenShots##
 
 *Video Agent Console WebRTC*
-![](http://dl.dropbox.com/u/1277237/AddomDM/VACW.png)
+![](https://dl.dropboxusercontent.com/u/1277237/AddonDM/VACW.png)
 
 ####NOTES####
 1. The resolution of the video can be changed by editing the config.xml file.
