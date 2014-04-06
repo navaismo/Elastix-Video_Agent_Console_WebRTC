@@ -1,0 +1,773 @@
+﻿<!DOCTYPE html>
+<html>
+<!-- head -->
+<head>
+    <meta charset="utf-8" />
+    <title>Digital-Merge's Web Softphone</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="Keywords" content="doubango, sipML5, VoIP, HTML5, WebRTC, RTCWeb, SIP, IMS, Video chat, VP8, live demo " />
+    <meta name="Description" content="HTML5 SIP client using WebRTC framework" />
+    <meta name="author" content="Navaismo" />
+
+    <script src="SIPml-api.js" type="text/javascript"> </script>
+    <script type="text/javascript" src="./assets/js/jquery.js"></script>
+
+    <!-- Styles -->
+    <link href="./assets/css/bootstrap.css" rel="stylesheet" />
+    <style type="text/css">
+        body{
+            padding-top: 80px;
+            padding-bottom: 40px;
+        }
+        .navbar-inner-red {
+          background-color: #600000;
+          background-image: none;
+          background-repeat: no-repeat;
+          filter: none;
+        }
+        .full-screen{
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        .normal-screen{
+            position: relative;
+        }
+        .call-options {
+          padding: 5px;
+          background-color: #f0f0f0;
+          border: 1px solid #eee;
+          border: 1px solid rgba(0, 0, 0, 0.08);
+          -webkit-border-radius: 4px;
+          -moz-border-radius: 4px;
+          border-radius: 4px;
+          -webkit-box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.05);
+          -moz-box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.05);
+          box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.05);
+          -webkit-transition-property: opacity;
+          -moz-transition-property: opacity; 
+          -o-transition-property: opacity; 
+          -webkit-transition-duration: 2s;
+          -moz-transition-duration: 2s;
+          -o-transition-duration: 2s;
+        }
+        .label-align {
+            display: block;
+            padding-left: 15px;
+            text-indent: -15px;
+        }
+        .input-align {
+            width: 13px;
+            height: 13px;
+            padding: 0;
+            margin:0;
+            vertical-align: bottom;
+            position: relative;
+            top: -1px;
+            *overflow: hidden;
+        }
+        .glass-panel{
+            z-index: 99;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            top: 0;
+            left: 0;
+            opacity: 0.8;
+            background-color: Gray;
+        }
+        div-keypad {
+            z-index: 100;
+            position: fixed;
+            -moz-transition-property: left top;
+            -o-transition-property: left top;
+            -webkit-transition-duration: 2s;
+            -moz-transition-duration: 2s;
+            -o-transition-duration: 2s;
+        }
+  .hidden { display: none; }
+      
+    </style>
+    <link href="./assets/css/bootstrap-responsive.css" rel="stylesheet" />
+    <!-- Le fav and touch icons -->
+    <link rel="shortcut icon" href="./assets/ico/favicon.ico" />
+    <link rel="apple-touch-icon-precomposed" sizes="114x114" href="./assets/ico/apple-touch-icon-114-precomposed.png" />
+    <link rel="apple-touch-icon-precomposed" sizes="72x72" href="./assets/ico/apple-touch-icon-72-precomposed.png" />
+    <link rel="apple-touch-icon-precomposed" href="./assets/ico/apple-touch-icon-57-precomposed.png" />
+</head>
+<!-- Javascript code -->
+<script type="text/javascript">
+/****************************************/
+/*	TODO:				*/
+/*					*/
+/*	Check websockets.		*/
+/*	Validate Browser compatibilty.	*/
+/*	Install webrtc4all Windows.	*/
+/*----XAccept calls after send a call.	*/
+/*----XOpen Local audio Incoming call.	*/
+/*	Video usage.			*/
+/*					*/
+/*	by navaismo at gmail dot com	*/
+/*	last rev: 29/03/2013		*/
+/*					*/
+/*	last rev: 30/03/2013		*/
+/****************************************/	
+/****************************************/
+/*	Changelog: 30/03/2013		*/
+/****************************************/
+/*					*/	
+/*	Listeners functions changed	*/
+/*	 from IF/ELSEIF to SWITCH.	*/
+/*					*/
+/*	Added media video for future	*/
+/*	usage.				*/
+/*					*/
+/*	On Hangup destroy call session.	*/
+/*					*/	
+/*	Solved Accepting calls and	*/
+/*	audio issues.			*/
+/*					*/
+/*	Solved acceptting calls after	*/
+/*	previous call.			*/
+/*					*/
+/****************************************/
+/****************************************/
+/*	Changelog: 01/04/2013		*/
+/****************************************/
+/*					*/
+/*	Keypad works now if not on 	*/
+/*	call.				*/
+/*					*/
+/*	Hangup clear keypad if not 	*/
+/*	in call.			*/
+/*					*/
+/*	If Response NOTFOUND stop	*/
+/*	all sounds.			*/
+/*					*/
+/*	Fixed DTMF sound on keypress.	*/
+/*					*/
+/****************************************/
+
+
+	//Variables
+	var mySipStack;
+        var mycallSession;
+	var myregisterSession;
+
+	// readycallback for INIT
+	var readyCallback = function(e){
+		console.log("engine is ready");
+		
+		//CHeck if the SIPml start
+		if(SIPml.isInitialized() == 1){
+			console.log("Done to initialize the engine");
+			//If the stack is started, create the sip stack
+			startSipStack();
+		}else{
+			//If not started display console msg
+			console.log("Failed to initialize the engine");
+		}        		
+	}
+
+	// error callback for INIT
+	var errorCallback = function(e){
+		console.error('Failed to initialize the engine: ' + e.message);
+	}
+
+	//INIT SIPML5 API
+	SIPml.init(readyCallback, errorCallback);
+
+	//Here we listen stack messages
+	function listenerFunc(e){
+		//Log incoming messages
+		tsk_utils_log_info('==stack event = ' + e.type);
+		
+		switch(e.type){
+		
+			//If failed msg or error Log in console & Web Page
+			case 'failed_to_start': case 'failed_to_stop':  case 'stopping': case 'stopped': {
+
+				console.log("Failed to connect to SIP SERVER")
+				mycallSession = null;
+				mySipStack = null;
+				myregisterSession = null;
+	
+				$("#mysipstatus").html('');
+				$("#mysipstatus").html('<i>Disconnected: </i>'+e.description);
+				
+				break;
+			}
+
+			//If the msg is 'started' now try to Login to Sip server       				
+	        	case 'started': {
+	        	        console.log("Trying to Login");
+        	        
+				login();//function to login in sip server
+	
+				//Display msg in the web page
+				$("#mysipstatus").html('');
+				$("#mysipstatus").html('<i>Trying to Connect</i>');
+			
+				break;
+			}
+
+			//If the msg 'connected' display the register OK in the web page 
+			case 'connected':{
+				$("#mysipstatus").html('');
+				$("#mysipstatus").html('<i>Registered with Sip Server</i>');
+
+				break;
+			}
+
+			//If the msg 'Sent request' display that in the web page---Pattience
+			case 'sent_request':{
+
+				$("#mysipstatus").html('');
+				$("#mysipstatus").html('<i>'+e.description+'</i>');
+
+				break;
+			}
+
+			//If the msg 'terminated' display that on the web---error maybe?
+			case 'terminated': {
+				$("#mysipstatus").html('');
+				$("#mysipstatus").html('<i>'+e.description+'</i>');
+				$("#divVideoLocal").hide();
+                               	$("#divVideoRemote").hide();
+                                $("#divVideo").hide();
+
+				break;
+			}
+
+			//If the msg 'i_new_call' the browser has an incoming call
+			case 'i_new_call': {
+				 if (mycallSession) {
+		                        // do not accept the incoming call if we're already 'in call'
+                		        e.newSession.hangup(); // comment this line for multi-line support
+		                }else{
+               	                
+					mycallSession = e.newSession;
+				
+					//Change buttons values
+	        		        btnCall.value = 'Answer';
+        	      			btnHangUp.value = 'Reject';
+		                        btnCall.disabled = false;
+        		               	btnHangUp.disabled = false;
+	
+					//Start ringing in the browser
+                	       		startRingTone();
+				
+					//Display in the web page who is calling
+			                var sRemoteNumber = (mycallSession.getRemoteFriendlyName() || 'unknown');
+        			        $("#mycallstatus").html("<i>Incoming call from [<b>" + sRemoteNumber + "</b>]</i>");
+                			showNotifICall(sRemoteNumber);
+				}
+				break;
+			}
+
+			case 'm_permission_requested':{
+                        	break;
+                	}
+            		case 'm_permission_accepted':
+		        case 'm_permission_refused': {
+				if(e.type == 'm_permission_refused'){
+
+				        btnCall.value = 'Call';
+				        btnHangUp.value = 'HangUp';
+				        btnCall.disabled = false;
+				        btnHangUp.disabled = true;
+
+				        mycallSession = null;
+
+				        stopRingbackTone();
+				        stopRingTone();
+
+				         $("#mysipstatus").html("<i>" + s_description + "</i>");
+
+                    		}
+                    		break;
+                	}
+			case 'starting': default: break;
+        	}           	
+	}
+
+	//Function to Listen the call session events
+	function calllistener(e){
+		//Log all events
+		tsk_utils_log_info('****call event**** = ' + e.type);
+
+		switch(e.type){
+
+			//Display in the web page that the call is connecting
+			case 'connected': case 'connecting': {
+
+			     var bConnected = (e.type == 'connected');
+                    		if (e.session == myregisterSession) {		                        
+                         		$("#mycallstatus").html("<i>" + e.description + "</i>");
+				
+                    		}else if (e.type == 'connecting') {		                        
+                         		$("#mycallstatus").html("<i>" + e.description + "</i>");
+		                
+				}else if (e.session == mycallSession) {
+		                        btnHangUp.value = 'HangUp';
+
+	      		                if (bConnected) {
+        		 	               stopRingbackTone();
+                        			stopRingTone();
+					}
+                            	}
+				break;
+                        }
+		
+			//Display in the browser teh call is finished
+			case 'terminated': case 'terminating': {
+		
+				if (e.session == mycallSession) {
+		                        mycallSession = null;
+              			        myregisterSession = null;
+
+                        		$("#mycallstatus").html("<i>" + e.description + "</i>");
+				        stopRingbackTone();
+				        stopRingTone();
+					$("#divVideoLocal").hide();
+                               	$("#divVideoRemote").hide();
+                                $("#divVideo").hide();
+
+
+		               }else if (e.session == mycallSession) {
+
+				        btnCall.value = 'Call';
+				        btnHangUp.value = 'HangUp';
+				        btnCall.disabled = false;
+				        btnHangUp.disabled = true;
+
+				        mycallSession = null;
+
+				        stopRingbackTone();
+				        stopRingTone();
+					$("#divVideoLocal").hide();
+                               	$("#divVideoRemote").hide();
+                                $("#divVideo").hide();
+
+                	       }
+				break;
+                
+			}		
+
+			// future use with video
+		         case 'm_stream_video_local_added': {
+		                    if (e.session == mycallSession) {
+					$("#divVideoLocal").show();
+                                        $("#divVideo").show();
+
+                    		    }
+                    		break;
+                	}
+	
+			//future use with video
+	               case 'm_stream_video_local_removed': {
+		                    if (e.session == mycallSession) {
+					$("#divVideoLocal").hide();
+                                        $("#divVideo").hide();
+
+                    		    }
+                    		break;
+                	}
+			
+			//future use with video
+		       case 'm_stream_video_remote_added':  {
+		                    if (e.session == mycallSession) {
+					$("#divVideoRemote").show();
+                                        $("#divVideo").show();
+
+                    		    }
+	                        break;
+            		}
+		
+			//future use with video
+		        case 'm_stream_video_remote_removed': {
+		                    if (e.session == mycallSession) {
+					$("#divVideoRemote").hide();
+                                        $("#divVideo").hide();
+
+                    		    }
+                    		break;
+                	}
+	
+			//added media audio todo messaging
+	                case 'm_stream_audio_local_added':
+			case 'm_stream_audio_local_removed':
+		        case 'm_stream_audio_remote_added':
+		        case 'm_stream_audio_remote_removed': {
+        	
+		               	stopRingTone();                   
+	                        stopRingbackTone();
+	
+                    		break;
+                	}
+
+			//If the remote end send us a request with SIPresponse 18X start to ringing
+			case 'i_ao_request':{
+	                        var iSipResponseCode = e.getSipResponseCode();
+        	               	if (iSipResponseCode == 180 || iSipResponseCode == 183) {
+                			startRingbackTone(); //function to start the ring tone
+					$("#mycallstatus").html('');
+                            		$("#mycallstatus").html('<i>Remote ringing...</i>');
+					
+					//YT play waiting video
+					$("#videoContainer").show();
+					autoPlayVideo();
+	                       	}
+				break;
+			}
+           
+			// If the remote send early media stop the sounds
+			case 'm_early_media': {
+	                	if (e.session == mycallSession){ 
+				      	stopRingTone();                   
+        		                stopRingbackTone();
+					$("#mycallstatus").html('');
+					$("#mycallstatus").html('<i>Call Answered</i>');
+		
+					//Stop and HIDE Waiting video
+					$("#videoContainer").html('');
+					$("#videoContainer").hide();
+
+				}
+				break;
+			}
+                }
+
+	}
+
+	//function to send the SIP Register
+	function login(){
+		//Show in the console that the browser is trying to register
+		console.log("Registering");
+		
+		//create the session
+        	myregisterSession = mySipStack.newSession('register', {
+                	events_listener: { events: '*', listener: listenerFunc } // optional: '*' means all events
+                });
+
+		//send the register
+	       myregisterSession.register();
+	}
+
+	// function to create the sip stack
+	function startSipStack(){
+		//show in the console that th browser is trying to create the sip stack
+		console.info("attempting to start the SIP STACK");
+
+		//stack options
+		mySipStack  = new SIPml.Stack({
+		        realm: 'asterisk',
+		        impi: 'mypeer',
+		        impu: 'sip:mypeer@myip',
+		        password: 'mypwd', // optional
+		        display_name: 'WEBRTC', // optional
+		        websocket_proxy_url: 'ws://myip:10060', // optional
+		        //outbound_proxy_url: 'udp://192.168.0.12:5060', // optional
+		        //ice_servers: [{ url: 'stun:stun.l.google.com:19302'}, { url:'turn:user@numb.viagenie.ca', credential:'myPassword'}], // optional
+		        //ice_servers: [{ url: 'stun:null'}], // optional
+		        //enable_rtcweb_breaker: true, // optional
+		        enable_click2call: false, // optional
+		        events_listener: { events: '*', listener: listenerFunc }, //optional
+		        sip_headers: [ //optional
+		            {name: 'User-Agent', value: 'DM_SIPWEB-UA'}, 
+		            {name: 'Organization', value: 'Digital-Merge'}
+		        ]
+    		});
+		//If the stack failed show errors in console
+		if (mySipStack.start() != 0) {
+                	console.info("Failed to start Sip Stack");
+            	}else{
+                	console.info("Started the Sip Stack");
+		}
+	
+	}
+
+
+	//Fucntion to call/answer
+	function call(){
+		//some variables
+		var tocall = $("#callnumber").val();
+		var flag = $("#btnCall").val();
+		var calltype;
+
+		if($("#onvideo").is(":checked")){
+                	$("#lvideo").text("Disable Video");
+			calltype = 'call-audiovideo';
+		}else{
+                	$("#lvideo").text("Enable Video");
+			calltype = 'call-audio';
+		}
+
+		
+		//If The button to call is CAll and the input text doesn't have a number && the stack failed && there is no Sip session alert and dont call
+		if(tocall == ''  && flag == 'Call' &&  mySipStack){
+			alert('Please enter the Number or Uri to Call');
+		
+		//If the button call is CALL and the input text has a number to call, then send the call
+		}else if(tocall != '' && flag == 'Call' && !mySipStack){
+			alert('The Stack is not ready');	
+			
+		//If the button call is CALL and the input text has a number to call, then send the call
+		}else if(tocall != '' && flag == 'Call' && mySipStack){
+		
+			//create the session to call
+        		mycallSession = mySipStack.newSession(calltype, {
+                		audio_remote: document.getElementById('audio_remote'),
+                		audio_local: document.getElementById('audio_local'),
+                		video_remote: document.getElementById('video_remote'),
+                		video_local: document.getElementById('video_local'),
+	                    	events_listener: { events: '*', listener: calllistener } // optional: '*' means all events
+        	        });
+	
+			//call using the number in the textbox
+        		mycallSession.call($("#callnumber").val());
+
+		//If the textbox is empty and the button call is ANSWER, then is a incoming call
+		}else if(flag =='Answer' && mySipStack && mycallSession){
+
+                        stopRingbackTone();
+                       	stopRingTone();                   
+
+			//Accept the session call
+			mycallSession.accept({
+                                audio_remote: document.getElementById('audio_remote'),
+                                audio_local: document.getElementById('audio_local'),
+                                events_listener: { events: '*', listener: calllistener } // optional: '*' means all events
+                        });
+		}
+	}
+
+
+	//function to hangup the call
+	function hangup(){
+		//If exist a call session, hangup and reset button values
+		if(mycallSession){
+	        	mycallSession.hangup({events_listener: { events: '*', listener: calllistener }});
+                        stopRingbackTone();
+                       	stopRingTone();                   
+                        btnCall.value = 'Call';
+       	               	btnHangUp.value = 'HangUp';
+			$("#callnumber").attr('value','');
+			$("#mycallstatus").html("Call Terminated")
+
+			//destroy the call session
+			mycallSession = null;
+
+			//Stop and hide waiting video frame
+			$("#videoContainer").html('');
+			$("#videoContainer").hide();
+			$("#divVideoLocal").hide();
+                             	$("#divVideoRemote").hide();
+                                $("#divVideo").hide();
+
+
+		}else{
+			$("#callnumber").attr('value','');
+		}			
+		
+	}
+
+	//Fucntion to send DTMF frames
+	function sipSendDTMF(c){
+        	if(mycallSession && c){
+            		if(mycallSession.dtmf(c) == 0){
+               			try { dtmfTone.play(); } catch(e){ }
+            		}
+        	}else{
+			var lastn = $("#callnumber").val();
+
+			$("#callnumber").val( lastn + c );
+       			try { dtmfTone.play(); } catch(e){ }
+
+		}
+		
+			
+    	}
+
+
+	//function to send messages
+		var messageSession;
+		var IMListener = function(e){
+			console.info('session event='+e.type);
+		}
+
+	function sendIM(){
+		if( mySipStack ){
+			console.log('We can send IM+++++++');
+			//var sendMessage = function(){
+				messageSession = mySipStack.newSession( 'message',{
+					events_listener: { events: '*', listener: IMListener}
+				});
+				console.log('trying to send IM++++');			
+				messageSession.send('5000@10.0.1.102',$("#sendchat").val(),'text/plain;charset=utf-8');
+			//} 
+		}
+
+	}
+
+
+	var acceptMessage = function(e){
+		e.newSession.accept();
+		console.info('IMmsg = '+e.getContentString()+' IMtype = '+e.getContentType());
+		$("#recchat").html(e.getContentString());
+	}
+
+
+
+
+
+
+
+
+/**************** fucntion to play sounds *******************/
+
+	function autoPlayVideo(){
+  		"use strict";
+	 	 $("#videoContainer").html('<iframe  widht="" height="" src="http://www.youtube.com/embed/nLAv_nKsuyQ?autoplay=1" frameborder="0" allowfullscreen wmode="Opaque"></iframe>');
+	}
+
+
+    function startRingTone() {
+        try { ringtone.play(); }
+        catch (e) { }
+    }
+
+    function stopRingTone() {
+        try { ringtone.pause(); }
+        catch (e) { }
+    }
+
+    function startRingbackTone() {
+        try { ringbacktone.play(); }
+        catch (e) { }
+    }
+
+    function stopRingbackTone() {
+        try { ringbacktone.pause(); }
+        catch (e) { }
+    }
+
+
+   function showNotifICall(s_number) {
+        // permission already asked when we registered
+        if (window.webkitNotifications && window.webkitNotifications.checkPermission() == 0) {
+            if (oNotifICall) {
+                oNotifICall.cancel();
+            }
+            oNotifICall = window.webkitNotifications.createNotification('images/sipml-34x39.png', 'Incaming call', 'Incoming call from ' + s_number);
+            oNotifICall.onclose = function () { oNotifICall = null; };
+            oNotifICall.show();
+        }
+    }
+
+	
+
+
+
+</script>
+
+<body>
+    <div class="container">
+        <div class="row-fluid">
+            <div id="divCallCtrl" class="span4 well" style='display:table-cell; vertical-align:middle'>
+               	<div align=center id="mysipstatus"></div>	
+                <table style='width: 100%;'>
+		 <tr>
+			<td>
+				<div align="center">
+					<input autofocus type="text" style="width: 50%" value="" id="callnumber" /> 
+					<br>
+					<input type="checkbox" name="onvideo" id="onvideo" />
+					<label style="font-size: 10px; "id="lvideo" for="onvideo">Enable Video</label>
+				</div>
+				
+			</td> 
+		</tr>
+				
+
+                    <tr>			
+                        <td colspan="1" align="center">
+			    <!-- KeyPad Div -->
+			    <div id='divKeyPad' class='span2 div-keypad' >
+			    	<table style="width: 60%; height: 60%" align=center>
+			            <tr><td><input type="button" style="width: 33%" class="btn-primary" value="1" onclick="sipSendDTMF('1');"/><input type="button" style="width: 33%" class="btn-primary" value="2" onclick="sipSendDTMF('2');"/><input type="button" style="width: 33%" class="btn-primary" value="3" onclick="sipSendDTMF('3');"/></td></tr>
+			            <tr><td><input type="button" style="width: 33%" class="btn-primary" value="4" onclick="sipSendDTMF('4');"/><input type="button" style="width: 33%" class="btn-primary" value="5" onclick="sipSendDTMF('5');"/><input type="button" style="width: 33%" class="btn-primary" value="6" onclick="sipSendDTMF('6');"/></td></tr>
+			            <tr><td><input type="button" style="width: 33%" class="btn-primary" value="7" onclick="sipSendDTMF('7');"/><input type="button" style="width: 33%" class="btn-primary" value="8" onclick="sipSendDTMF('8');"/><input type="button" style="width: 33%" class="btn-primary" value="9" onclick="sipSendDTMF('9');"/></td></tr>
+			            <tr><td><input type="button" style="width: 33%" class="btn-primary" value="*" onclick="sipSendDTMF('*');"/><input type="button" style="width: 33%" class="btn-primary" value="0" onclick="sipSendDTMF('0');"/><input type="button" style="width: 33%" class="btn-primary" value="#" onclick="sipSendDTMF('#');"/></td></tr>
+        			</table>
+    			    </div>
+                            <input type="button" class="btn-success" style="" id="btnCall" value="Call" onclick='call();' />&nbsp;
+                            <input type="button" class="btn-danger" style=""  id="btnHangUp" value="HangUp" onclick='hangup();' />
+
+                        </td>
+			
+                    </tr>
+
+                    <tr>
+                    </tr>
+                </table>
+            </div>
+		
+	<div class="row-fluid">
+	    <div class="span6 well">
+
+		<div id="divVideo" >
+			
+                	<div align="center" id="divVideoRemote" style='border:0px solid #000; height:25%; width:75%'>
+                        	 <video class="video" width="75%" height="25%" id="video_remote" autoplay="autoplay" style="opacity: 1; background-color: #000000; -webkit-transition-property: opacity;    -webkit-transition-duration: 2s;">
+                                 </video>
+                        </div>
+
+                        <div id="divVideoLocal" style='border:0px solid #000'>
+                                 <video class="video" width="140px" height="110px" id="video_local" autoplay="autoplay" muted="true" style="opacity: 1;   margin-top: -80px; margin-left: 5px; background-color: #000000; -webkit-transition-property: opacity; -webkit-transition-duration: 2s;">
+                                 </video>
+                        </div>
+
+						
+               </div>
+	</div>
+	</div>
+
+
+	</div>
+
+       </div>
+        <br />
+    <!-- /container -->
+
+
+    <!-- Le javascript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script type="text/javascript" src="./assets/js/bootstrap-transition.js"></script>
+    <script type="text/javascript" src="./assets/js/bootstrap-alert.js"></script>
+    <script type="text/javascript" src="./assets/js/bootstrap-modal.js"></script>
+    <script type="text/javascript" src="./assets/js/bootstrap-dropdown.js"></script>
+    <script type="text/javascript" src="./assets/js/bootstrap-scrollspy.js"></script>
+    <script type="text/javascript" src="./assets/js/bootstrap-tab.js"></script>
+    <script type="text/javascript" src="./assets/js/bootstrap-tooltip.js"></script>
+    <script type="text/javascript" src="./assets/js/bootstrap-popover.js"></script>
+    <script type="text/javascript" src="./assets/js/bootstrap-button.js"></script>
+    <script type="text/javascript" src="./assets/js/bootstrap-collapse.js"></script>
+    <script type="text/javascript" src="./assets/js/bootstrap-carousel.js"></script>
+    <script type="text/javascript" src="./assets/js/bootstrap-typeahead.js"></script>
+
+    <!-- Audios -->
+    <audio id="audio_remote" autoplay="autoplay" />
+    <audio id="ringtone" loop src="sounds/ringtone.wav" />
+    <audio id="ringbacktone" loop src="sounds/ringbacktone.wav" />
+    <audio id="dtmfTone" src="sounds/dtmf.wav" />
+
+
+</body>
+</html>
