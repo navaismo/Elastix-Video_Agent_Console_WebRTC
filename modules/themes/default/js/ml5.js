@@ -1,3 +1,8 @@
+/**********************
+ by navaismo@gmail.com
+  release 0.1
+  for video beta testers
+***********************/
      
 	//Variables
 	var mySipStack;
@@ -14,6 +19,17 @@
 	var mywebsocket = $("#ml5websocket").val();
 	var mybreaker = $("#ml5breaker").val();
 	var mypwd = $("#ml5pwd").val();
+
+
+ var oConfigCall = {
+                           	audio_remote: document.getElementById('audio_remote'),
+                                audio_local: document.getElementById('audio_local'),
+                                video_remote: document.getElementById('video_remote'),
+                                video_local: document.getElementById('video_local'),
+                                events_listener: { events: '*', listener: calllistener } // optional: '*' means all events
+        };
+
+
 
 	// readycallback for INIT
 	var readyCallback = function(e){
@@ -110,7 +126,6 @@
 		                }else{
 					console.log("***********************incoming call");
                	                	flag ='1';
-					mycallSession = e.newSession;
 				
 					//Change buttons values
 					$("#btnCall").text('Answer');
@@ -122,7 +137,10 @@
 					//Display in the web page who is calling
 			                var sRemoteNumber = (mycallSession.getRemoteFriendlyName() || 'unknown');
         			        $("#mycallstatus").html("<i>Incoming call from [<b>" + sRemoteNumber + "</b>]</i>");
-                			showNotifICall(sRemoteNumber);
+
+					mycallSession = e.newSession;
+                                        mycallSession.setConfiguration(oConfigCall);
+
 				}
 				break;
 			}
