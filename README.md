@@ -110,7 +110,7 @@ Then change this part of code in the vid1.htm file to match your peer settings:
 3. Depending on the Machine capabilities the Video transcoding(usually from VP8 to h263p) will show the quality. 
 4. The screenshot was taken from a Virtualbox Machine i386 1 processor 512 of RAM.
 5. Higher hardware specs will allow you better Video Quality
-6. **THIS CONSOLE ONLY WILL WORK WITH VIDEO CALLS** For audio calls only use the normal webrtc agent console.
+6. **THIS CONSOLE WILL WORK ONLY WITH VIDEO CALLS** For audio calls only use the normal webrtc agent console.
 
 
 by navaismo@gmail.com
